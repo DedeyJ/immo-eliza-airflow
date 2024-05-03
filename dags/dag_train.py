@@ -4,9 +4,7 @@ from airflow.operators.python_operator import BranchPythonOperator
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.sensors.base import BaseSensorOperator
-from airflow.utils.dates import days_ago
 from datetime import datetime, timedelta
-from airflow.operators.dummy_operator import DummyOperator
 import os
 import shutil
 
@@ -21,7 +19,7 @@ preprocess_file_path = os.path.join(model_path, preprocess_file)
 
 file_paths = [properties_file_path, model_file_path, preprocess_file_path]
 
-
+# Create custome Operator to poke for files
 class FileSensor(BaseSensorOperator):
     def __init__(self, file_path, retries, retry_delay, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -34,18 +32,15 @@ class FileSensor(BaseSensorOperator):
             return True
         return False
 
+# Simple python function to check if a files exists
 def check_file_existence(file_path):
     if os.path.exists(file_path):
         return 'train_model'
     else:
         return 'send_email'
 
-def copy_and_rename_file(original_file):
-    today_date = datetime.now().strftime("%Y%m%d")
-    new_file_name = os.path.basename(original_file).split('.')[0] + f'_{today_date}.csv'
-    new_file_path = os.path.join(os.path.dirname(original_file), new_file_name)
-    shutil.copyfile(original_file, new_file_path)
 
+# Simple function that copies and renames files in a list.
 def copy_and_rename_files(file_paths, destination_dir=None):
     today_date = datetime.now().strftime("%Y%m%d")
     for original_file in file_paths:
@@ -62,8 +57,6 @@ default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
     'start_date': datetime(2024, 4, 24),
-    'email_on_failure': False,
-    'email_on_retry': False,
     'retries': 1
 }
 
@@ -77,6 +70,7 @@ dag = DAG(
 )
 
 # Define tasks
+# Uses the custome Operator to poke for certain file
 file_sensor_task = FileSensor(
     task_id='file_sensor',
     file_path=properties_file_path,  # Specify the file path here
@@ -86,6 +80,7 @@ file_sensor_task = FileSensor(
     dag=dag
 )
 
+# Task that allows me to branch
 branch_task = BranchPythonOperator(
     task_id='branch_task',
     python_callable=check_file_existence,
@@ -93,12 +88,14 @@ branch_task = BranchPythonOperator(
     dag=dag
 )
 
+# Bash operator that tells it to run train.py
 train_model = BashOperator(
     task_id='train_model',
     bash_command="python /model_training_project/train.py",
     dag=dag
 )
 
+# Task to run python code defined in this DAG file
 copy_and_rename_file_task = PythonOperator(
     task_id='copy_and_rename_file_task',
     python_callable=copy_and_rename_files,
@@ -106,6 +103,7 @@ copy_and_rename_file_task = PythonOperator(
     dag=dag
 )
 
+# Email Operator to send out email.
 send_email = EmailOperator(
     task_id='send_email',
     to='jens.dedeyne@gmail.com',  # Specify your email here
