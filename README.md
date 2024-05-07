@@ -63,14 +63,14 @@ Now should be able to access your airflow webinterface by using any browser and 
 ~~~
 http://localhost:8080
 ~~~
-![Login](images\airflow-login.jpg)
-loging and password is both **airflow**.
+![Login](images/airflow-login.jpg)
+login and password is both **airflow**.
 
-![Main](images\airflow-main.jpg)
+![Main](images/airflow-main.jpg)
 
 ## DAG
 
-![DAG](images\DAG_train_model.png)
+![DAG](images/DAG_train_model.png)
 In the diagram provided, you'll find a visual breakdown of the steps within my DAG. Below, we'll delve into each component:
 
 - file_sensor: This SensorOperator within the DAG is designed to scan the designated folder (./project/data) for the presence of 'properties.csv'. Currently configured to execute this check every minute for a total of three times.
